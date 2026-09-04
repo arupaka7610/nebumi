@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#0E2038">
+<title>値踏み</title>
+<style>
+  :root{
+    --ink:#0E2038;
+    --ink-2:#16304F;
+    --ink-3:#1F3F65;
+    --tag:#F2C14E;
+    --loss:#E0705C;
+    --text:#E7EAEF;
+    --muted:#93A5BC;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;padding:0}
+  body{
+    background:var(--ink);
+    color:var(--text);
+    font-family:"Hiragino Kaku Gothic ProN","Hiragino Sans","Yu Gothic Medium","Noto Sans JP",system-ui,sans-serif;
+    font-size:17px;
+    line-height:1.6;
+    padding:20px 18px calc(40px + env(safe-area-inset-bottom));
+    max-width:520px;
+    margin:0 auto;
+    -webkit-text-size-adjust:100%;
+  }
+
+  h1{
+    font-size:19px;
+    font-weight:600;
+    letter-spacing:.14em;
+    margin:0 0 22px;
+    color:var(--muted);
+  }
+
+  label{
+    display:block;
+    font-size:14px;
+    color:var(--muted);
+    margin:0 0 7px;
+  }
+
+  textarea,input[type=text],input[type=number],select{
+    width:100%;
+    background:var(--ink-2);
+    border:1px solid var(--ink-3);
+    border-radius:10px;
+    color:var(--text);
+    font-family:inherit;
+    font-size:17px;
+    padding:13px 14px;
+    appearance:none;
+  }
+  textarea{height:92px;resize:none;line-height:1.5}
+  input:focus,textarea:focus,select:focus{
+    outline:2px solid var(--tag);
+    outline-offset:1px;
+    border-color:transparent;
+  }
+  .field{margin-bottom:18px}
+
+  .row{display:flex;gap:12px}
+  .row .field{flex:1}
+
+  /* ---- 値札 ---- */
+  .tag{
+    position:relative;
+    background:var(--tag);
+    color:#231a06;
+    border-radius:6px 14px 14px 6px;
+    padding:20px 22px 22px 34px;
+    margin:26px 0 22px;
+  }
+  .tag::before{
+    content:"";
+    position:absolute;
+    left:13px;top:50%;
+    width:11px;height:11px;
+    margin-top:-5.5px;
+    border-radius:50%;
+    background:var(--ink);
+  }
+  .tag.loss{background:var(--loss);color:#2b0f09}
+  .tag.empty{
+    background:transparent;
+    border:1px dashed var(--ink-3);
+    color:var(--muted);
+    padding:26px 22px;
+    text-align:center;
+  }
+  .tag.empty::before{display:none}
+
+  .tag .brand{
+    font-size:15px;
+    font-weight:600;
+    margin-bottom:2px;
+    opacity:.75;
+  }
+  .tag .profit{
+    font-size:44px;
+    font-weight:800;
+    letter-spacing:-.02em;
+    line-height:1.1;
+    font-variant-numeric:tabular-nums;
+  }
+  .tag .profit small{font-size:22px;font-weight:700;margin-right:2px}
+  .tag .detail{
+    font-size:14px;
+    margin-top:8px;
+    opacity:.8;
+    font-variant-numeric:tabular-nums;
+  }
+
+  /* ---- 検索ワード ---- */
+  .kw{
+    background:var(--ink-2);
+    border-radius:10px;
+    padding:13px 15px;
+    margin-bottom:18px;
+    display:flex;
+    align-items:center;
+    gap:12px;
+  }
+  .kw span{flex:1;font-size:15px;word-break:break-all}
+  .kw button{
+    flex:none;
+    background:var(--ink-3);
+    border:0;
+    color:var(--text);
+    font-family:inherit;
+    font-size:14px;
+    padding:8px 13px;
+    border-radius:7px;
+  }
+
+  /* ---- リンク ---- */
+  .links{display:grid;gap:10px}
+  .links a{
+    display:block;
+    background:var(--ink-2);
+    border:1px solid var(--ink-3);
+    border-radius:11px;
+    padding:15px 17px;
+    color:var(--text);
+    text-decoration:none;
+    font-size:16px;
+    font-weight:600;
+  }
+  .links a b{display:block;font-size:13px;font-weight:400;color:var(--muted);margin-top:2px}
+  .links a.off{opacity:.35;pointer-events:none}
+  .links a:active{background:var(--ink-3)}
+
+  details{margin-top:30px;border-top:1px solid var(--ink-3);padding-top:16px}
+  summary{color:var(--muted);font-size:15px;cursor:pointer}
+  details .row{margin-top:16px}
+  details label{font-size:13px}
+  .note{color:var(--muted);font-size:13px;line-height:1.7;margin-top:22px}
+</style>
+</head>
+<body>
+
+<h1>値踏み</h1>
+
+<div class="field">
+  <label for="name">商品名を貼る</label>
+  <textarea id="name" placeholder="セカストの通知からコピーして貼る" autocapitalize="off"></textarea>
+</div>
+
+<div class="row">
+  <div class="field">
+    <label for="cost">仕入れ値</label>
+    <input id="cost" type="number" inputmode="numeric" placeholder="12800">
+  </div>
+  <div class="field">
+    <label for="sale">売れそうな値段</label>
+    <input id="sale" type="number" inputmode="numeric" placeholder="自動">
+  </div>
+</div>
+
+<div class="field" id="pickWrap" style="display:none">
+  <label for="pick">ブランドが違うときは選び直す</label>
+  <select id="pick"></select>
+</div>
+
+<div class="tag empty" id="tag">商品名と仕入れ値を入れると値踏みします</div>
+
+<div class="kw" id="kwBox" style="display:none">
+  <span id="kw"></span>
+  <button id="copy">コピー</button>
+</div>
+
+<div class="links">
+  <a id="l1" class="off" href="#">メルカリで売れた値段を見る<b>これが本当の相場</b></a>
+  <a id="l2" class="off" href="#">メルカリの今の出品を見る<b>ライバルの値段</b></a>
+  <a id="l3" class="off" href="#">ヤフオクの落札相場を見る<b>ブランド品はここも効く</b></a>
+  <a id="l4" class="off" href="#">画像で調べる<b>型番が分からないとき</b></a>
+</div>
+
+<details>
+  <summary>計算の設定</summary>
+  <div class="row">
+    <div class="field">
+      <label for="fee">手数料 %</label>
+      <input id="fee" type="number" inputmode="decimal" value="10">
+    </div>
+    <div class="field">
+      <label for="ship">送料</label>
+      <input id="ship" type="number" inputmode="numeric" value="750">
+    </div>
+    <div class="field">
+      <label for="target">目標利益</label>
+      <input id="target" type="number" inputmode="numeric" value="5000">
+    </div>
+  </div>
+</details>
+
+<p class="note">
+  予想売値はブランドごとの目安倍率をかけただけの数字です。必ず「売れた値段」を自分の目で確かめてください。<br>
+  実際の相場が分かったら「売れそうな値段」に打ち込むと、正確な利益が出ます。
+</p>
+
+<script>
+const BRANDS = [
+  {label:"ルイヴィトン",       rate:2.2, names:["LOUIS VUITTON","ルイヴィトン","ヴィトン","ルイ・ヴィトン"]},
+  {label:"シャネル",           rate:2.3, names:["CHANEL","シャネル"]},
+  {label:"エルメス",           rate:2.5, names:["HERMES","エルメス"]},
+  {label:"グッチ",             rate:2.0, names:["GUCCI","グッチ"]},
+  {label:"プラダ",             rate:2.0, names:["PRADA","プラダ"]},
+  {label:"ミュウミュウ",       rate:2.0, names:["MIU MIU","ミュウミュウ"]},
+  {label:"ディオール",         rate:2.2, names:["DIOR","ディオール","クリスチャンディオール"]},
+  {label:"サンローラン",       rate:2.1, names:["SAINT LAURENT","サンローラン","イヴサンローラン","YSL"]},
+  {label:"フェンディ",         rate:2.0, names:["FENDI","フェンディ"]},
+  {label:"ボッテガヴェネタ",   rate:2.0, names:["BOTTEGA VENETA","ボッテガヴェネタ","ボッテガ"]},
+  {label:"バレンシアガ",       rate:2.0, names:["BALENCIAGA","バレンシアガ"]},
+  {label:"セリーヌ",           rate:2.2, names:["CELINE","セリーヌ"]},
+  {label:"ロエベ",             rate:2.1, names:["LOEWE","ロエベ"]},
+  {label:"バーバリー",         rate:1.9, names:["BURBERRY","バーバリー"]},
+  {label:"コーチ",             rate:1.7, names:["COACH","コーチ"]},
+  {label:"マイケルコース",     rate:1.6, names:["MICHAEL KORS","マイケルコース"]},
+  {label:"ケイトスペード",     rate:1.6, names:["KATE SPADE","ケイトスペード"]},
+  {label:"フルラ",             rate:1.6, names:["FURLA","フルラ"]},
+  {label:"トリーバーチ",       rate:1.6, names:["TORY BURCH","トリーバーチ"]},
+  {label:"マークジェイコブス", rate:1.6, names:["MARC JACOBS","マークジェイコブス"]},
+  {label:"フェラガモ",         rate:1.8, names:["FERRAGAMO","フェラガモ"]},
+  {label:"トッズ",             rate:1.8, names:["TOD'S","TODS","トッズ"]},
+  {label:"ゴヤール",           rate:2.3, names:["GOYARD","ゴヤール"]},
+  {label:"モンクレール",       rate:2.2, names:["MONCLER","モンクレール"]},
+  {label:"カナダグース",       rate:2.0, names:["CANADA GOOSE","カナダグース"]},
+  {label:"ヴィヴィアン",       rate:1.8, names:["Vivienne Westwood","ヴィヴィアンウエストウッド","ヴィヴィアン"]},
+  {label:"ポールスミス",       rate:1.6, names:["Paul Smith","ポールスミス"]},
+  {label:"ラルフローレン",     rate:1.6, names:["RALPH LAUREN","ラルフローレン"]},
+  {label:"ティファニー",       rate:2.0, names:["TIFFANY","ティファニー"]},
+  {label:"カルティエ",         rate:2.3, names:["Cartier","カルティエ"]},
+  {label:"ブルガリ",           rate:2.1, names:["BVLGARI","BULGARI","ブルガリ"]},
+  {label:"ダンヒル",           rate:1.7, names:["dunhill","ダンヒル"]},
+  {label:"エトロ",             rate:1.7, names:["ETRO","エトロ"]},
+  {label:"ジミーチュウ",       rate:1.9, names:["JIMMY CHOO","ジミーチュウ"]},
+  {label:"クロムハーツ",       rate:2.4, names:["Chrome Hearts","クロムハーツ"]},
+];
+
+const KINDS = ["長財布","二つ折り","キーケース","名刺入れ","ショルダー","トート","バッグ","財布",
+  "リュック","ポーチ","ベルト","時計","ネックレス","リング","ピアス","コート","ジャケット",
+  "ダウン","マフラー","スカーフ","シャツ","ニット","スニーカー","ブーツ","パンプス","手帳"];
+
+const $ = id => document.getElementById(id);
+const yen = n => "¥" + Math.round(n).toLocaleString("ja-JP");
+
+// ブランド選択肢
+const pick = $("pick");
+pick.innerHTML = '<option value="">自動で判定</option>' +
+  BRANDS.map((b,i)=>`<option value="${i}">${b.label}</option>`).join("");
+
+function detect(text){
+  const low = text.toLowerCase();
+  for (const b of BRANDS)
+    for (const n of b.names)
+      if (low.includes(n.toLowerCase())) return b;
+  return null;
+}
+
+function keywords(text, brand){
+  const words = [brand.label];
+  const models = text.match(/\b[A-Z0-9][A-Z0-9-]{3,14}\b/g) || [];
+  for (const m of models){
+    if (/^\d+$/.test(m)) continue;
+    if (["HTTP","HTTPS"].includes(m)) continue;
+    if (!words.includes(m)) words.push(m);
+    if (words.length >= 4) break;
+  }
+  for (const k of KINDS){
+    if (text.includes(k)) { words.push(k); break; }
+  }
+  return words.join(" ");
+}
+
+function num(el, fallback){
+  const v = parseFloat(el.value);
+  return isNaN(v) ? fallback : v;
+}
+
+function update(){
+  const text = $("name").value.trim();
+  const cost = parseInt($("cost").value, 10);
+  const tag  = $("tag");
+
+  const chosen = pick.value === "" ? null : BRANDS[+pick.value];
+  const brand  = chosen || detect(text);
+
+  $("pickWrap").style.display = text ? "block" : "none";
+
+  if (!text || isNaN(cost)){
+    tag.className = "tag empty";
+    tag.textContent = "商品名と仕入れ値を入れると値踏みします";
+    $("kwBox").style.display = "none";
+    ["l1","l2","l3","l4"].forEach(i => $(i).className = "off");
+    return;
+  }
+
+  if (!brand){
+    tag.className = "tag empty";
+    tag.textContent = "知らないブランドです。下の欄から選ぶか、設定に登録してください";
+    $("kwBox").style.display = "none";
+    ["l1","l2","l3","l4"].forEach(i => $(i).className = "off");
+    return;
+  }
+
+  const kw = keywords(text, brand);
+  $("kw").textContent = kw;
+  $("kwBox").style.display = "flex";
+
+  const q = encodeURIComponent(kw);
+  $("l1").href = `https://jp.mercari.com/search?keyword=${q}&status=sold_out`;
+  $("l2").href = `https://jp.mercari.com/search?keyword=${q}`;
+  $("l3").href = `https://auctions.yahoo.co.jp/closedsearch/closedsearch?p=${q}`;
+  $("l4").href = `https://www.google.com/search?tbm=isch&q=${q}`;
+  ["l1","l2","l3","l4"].forEach(i => $(i).className = "");
+
+  const manual = parseInt($("sale").value, 10);
+  const auto   = !isNaN(manual);
+  const sale   = auto ? manual : Math.round(cost * brand.rate);
+  const fee    = sale * (num($("fee"), 10) / 100);
+  const profit = Math.round(sale - fee - num($("ship"), 750) - cost);
+  const target = num($("target"), 5000);
+
+  tag.className = "tag" + (profit < 0 ? " loss" : "");
+  tag.innerHTML =
+    `<div class="brand">${brand.label}${profit >= target ? "・買い" : ""}</div>` +
+    `<div class="profit"><small>${profit < 0 ? "−¥" : "＋¥"}</small>` +
+      Math.abs(profit).toLocaleString("ja-JP") + `</div>` +
+    `<div class="detail">売値 ${yen(sale)}${auto ? "" : `（${brand.rate}倍で仮置き）`}` +
+      ` − 手数料 ${yen(fee)} − 送料 ${yen(num($("ship"),750))} − 仕入れ ${yen(cost)}</div>`;
+}
+
+["cost","sale","fee","ship","target"].forEach(id =>
+  $(id).addEventListener("input", update));
+pick.addEventListener("change", update);
+$("name").addEventListener("input", () => { pick.value = ""; update(); });
+
+$("copy").addEventListener("click", async () => {
+  try {
+    await navigator.clipboard.writeText($("kw").textContent);
+    $("copy").textContent = "コピーした";
+    setTimeout(() => $("copy").textContent = "コピー", 1400);
+  } catch {
+    $("copy").textContent = "できず";
+    setTimeout(() => $("copy").textContent = "コピー", 1400);
+  }
+});
+
+update();
+</script>
+</body>
+</html>
