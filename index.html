@@ -168,8 +168,9 @@
 <h1>値踏み</h1>
 
 <div class="field">
-  <label for="name">商品名を貼る</label>
-  <textarea id="name" placeholder="セカストの通知からコピーして貼る" autocapitalize="off"></textarea>
+  <label for="name">商品名を貼る（ブランド名の行ごと貼ると確実）</label>
+  <textarea id="name" placeholder="GUCCI
+長財布_GGマーモント/レザー/BLK/メンズ//" autocapitalize="off"></textarea>
 </div>
 
 <div class="row">
@@ -264,9 +265,18 @@ const BRANDS = [
   {label:"クロムハーツ",       rate:2.4, names:["Chrome Hearts","クロムハーツ"]},
 ];
 
-const KINDS = ["長財布","二つ折り","キーケース","名刺入れ","ショルダー","トート","バッグ","財布",
-  "リュック","ポーチ","ベルト","時計","ネックレス","リング","ピアス","コート","ジャケット",
-  "ダウン","マフラー","スカーフ","シャツ","ニット","スニーカー","ブーツ","パンプス","手帳"];
+const KINDS = ["長財布","二つ折り財布","二つ折り","三つ折り","財布","キーケース","名刺入れ",
+  "カードケース","トートバッグ","ショルダーバッグ","ハンドバッグ","ボストンバッグ","リュック",
+  "バックパック","ポーチ","クラッチバッグ","バッグ","ベルト","時計","ネックレス","ブレスレット",
+  "リング","ピアス","コート","ジャケット","ダウンジャケット","ダウン","マフラー","ストール",
+  "スカーフ","シャツ","ニット","スカート","パンツ","ワンピース","スニーカー","ブーツ",
+  "パンプス","サンダル","革靴","帽子","手帳"];
+
+// 検索の邪魔になる言葉（素材・色・性別）
+const NOISE = new Set(("レザー コットン キャンバス PVC ナイロン スエード デニム ウール カシミヤ "+
+  "シルク ラムスキン カーフ エナメル ポリエステル ラバー ゴム 合皮 帆布 "+
+  "BLK BRW WHT NVY GRY RED BLU GRN PNK YEL BEG ORG PPL SLV GLD "+
+  "無地 メンズ レディース キッズ ユニセックス").split(" "));
 
 const $ = id => document.getElementById(id);
 const yen = n => "¥" + Math.round(n).toLocaleString("ja-JP");
@@ -284,19 +294,36 @@ function detect(text){
   return null;
 }
 
+// 「モノグラム・キャンバス」のような塊から素材語だけ落とす
+function cleanSeg(p){
+  if (!p.includes("・")) return p;
+  return p.split("・").filter(x => x && !NOISE.has(x)).join("・");
+}
+
 function keywords(text, brand){
-  const words = [brand.label];
-  const models = text.match(/\b[A-Z0-9][A-Z0-9-]{3,14}\b/g) || [];
-  for (const m of models){
-    if (/^\d+$/.test(m)) continue;
-    if (["HTTP","HTTPS"].includes(m)) continue;
-    if (!words.includes(m)) words.push(m);
-    if (words.length >= 4) break;
+  const parts = text.split(/[/_\n]/).map(s => s.trim()).filter(Boolean);
+  const names = [], kinds = [], models = [];
+
+  for (let p of parts){
+    p = cleanSeg(p);
+    if (!p || NOISE.has(p)) continue;
+    if (brand && brand.names.some(n => n.toLowerCase() === p.toLowerCase())) continue;
+    if (/^\d{1,3}(\.\d+)?$/.test(p)) continue;      // サイズ
+    if (/^\d{4,}$/.test(p)) { models.push(p); continue; }   // 型番
+    if (/^[0-9]+WAY$/i.test(p)) continue;
+
+    const kind = KINDS.find(k => p.includes(k));
+    if (kind && p.length <= kind.length + 2){
+      if (!kinds.includes(kind)) kinds.push(kind);
+      continue;
+    }
+    names.push(p);
   }
-  for (const k of KINDS){
-    if (text.includes(k)) { words.push(k); break; }
-  }
-  return words.join(" ");
+
+  const words = [];
+  if (brand) words.push(brand.label);
+  words.push(...names.slice(0,2), ...models.slice(0,1), ...kinds.slice(0,1));
+  return [...new Set(words)].join(" ");
 }
 
 function num(el, fallback){
@@ -314,17 +341,9 @@ function update(){
 
   $("pickWrap").style.display = text ? "block" : "none";
 
-  if (!text || isNaN(cost)){
+  if (!text){
     tag.className = "tag empty";
-    tag.textContent = "商品名と仕入れ値を入れると値踏みします";
-    $("kwBox").style.display = "none";
-    ["l1","l2","l3","l4"].forEach(i => $(i).className = "off");
-    return;
-  }
-
-  if (!brand){
-    tag.className = "tag empty";
-    tag.textContent = "知らないブランドです。下の欄から選ぶか、設定に登録してください";
+    tag.textContent = "商品名を貼ると値踏みします";
     $("kwBox").style.display = "none";
     ["l1","l2","l3","l4"].forEach(i => $(i).className = "off");
     return;
@@ -340,6 +359,17 @@ function update(){
   $("l3").href = `https://auctions.yahoo.co.jp/closedsearch/closedsearch?p=${q}`;
   $("l4").href = `https://www.google.com/search?tbm=isch&q=${q}`;
   ["l1","l2","l3","l4"].forEach(i => $(i).className = "");
+
+  if (!brand){
+    tag.className = "tag empty";
+    tag.textContent = "ブランドを下の欄から選ぶと利益が出ます";
+    return;
+  }
+  if (isNaN(cost)){
+    tag.className = "tag empty";
+    tag.textContent = "仕入れ値を入れると利益が出ます";
+    return;
+  }
 
   const manual = parseInt($("sale").value, 10);
   const auto   = !isNaN(manual);
